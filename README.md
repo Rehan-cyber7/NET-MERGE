@@ -17,7 +17,6 @@
 <p align="center">
   <b>PlusNet – Multi-Network Android Download Manager</b>
 </p>
-The screenshot illustrates the download-details interface. The network result shown is from one test URL; whether a server accepts Wi-Fi and cellular requests depends on that server, the carrier and the device.
 
 ## Features
 
