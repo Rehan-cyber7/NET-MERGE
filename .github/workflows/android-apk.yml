@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -33,24 +32,41 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # GitHub-hosted Ubuntu runners already include the Android SDK.
-      # Avoid android-actions/setup-android, which was failing in sdkmanager.
+      # Do not chmod or modify the runner's preinstalled SDK. Invoke sdkmanager
+      # through bash (so its executable bit is not needed) and install SDK
+      # packages into a writable directory owned by the GitHub runner.
       - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
-          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          test -d "$SDK_ROOT" || { echo "Android SDK not found at $SDK_ROOT"; exit 1; }
-          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager was not found under $SDK_ROOT/cmdline-tools"
-            find "$SDK_ROOT" -maxdepth 4 -type f -name sdkmanager -print || true
+
+          PREINSTALLED_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$PREINSTALLED_SDK/cmdline-tools" -name sdkmanager -print 2>/dev/null | sort -V | tail -n 1)"
+
+          if [[ -z "$SDKMANAGER" || ! -r "$SDKMANAGER" ]]; then
+            echo "Readable sdkmanager not found under: $PREINSTALLED_SDK/cmdline-tools"
+            ls -la "$PREINSTALLED_SDK/cmdline-tools" || true
             exit 1
           fi
-          chmod +x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
+
+          echo "Using sdkmanager: $SDKMANAGER"
+          ls -l "$SDKMANAGER"
+
+          # Avoid permissions/ownership problems in /usr/local/lib/android/sdk.
+          SDK_ROOT="$RUNNER_TEMP/android-sdk"
+          mkdir -p "$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+
+          # Use bash to run the script without changing its file permissions.
+          # License acceptance can close the input pipe early, so tolerate that
+          # expected yes/SIGPIPE condition while still checking package install.
+          set +o pipefail
+          yes | bash "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null
+          set -o pipefail
+
+          bash "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
