@@ -58,7 +58,8 @@ final class Probe {
     }
 
     static String describe(int code) {
-        if (code == 401 || code == 403) return "The server refused the link (HTTP " + code + "). It may need a sign-in.";
+        if (code == 401 || code == 403) return "HTTP " + code
+            + ": the download host refused this network request. The link may use a temporary or IP-bound redirect, or the host may block this network.";
         if (code == 404 || code == 410) return "The file isn't there any more (HTTP " + code + ")";
         return "The server answered HTTP " + code;
     }

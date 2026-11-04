@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ClipboardPaste, Pause, Play, Plus, RotateCw, Settings2, Trash2, ExternalLink } from 'lucide-react'
 import { Engine, type Dl, type NetId, type Probe } from './engine'
 import { formatBytes, formatEta, formatSpeed, shares } from './format'
-import { init, netName, rename, setLimit, speedHistory, useStore } from './store'
+import { init, netName, refreshNetworks, rename, setLimit, speedHistory, useStore } from './store'
 import { BlockGrid, Chart, NetIcon, ProgressBar, ShareBar, Sheet, Switch, tone } from './components'
 
 type Tab = 'active' | 'done'
@@ -156,6 +156,7 @@ function Card({ d, onOpen }: { d: Dl; onOpen: () => void }): React.JSX.Element {
 
 function AddSheet({ onClose }: { onClose: () => void }): React.JSX.Element {
   const s = useStore()
+  useEffect(() => { void refreshNetworks() }, [])
   const [url, setUrl] = useState('')
   const [info, setInfo] = useState<Probe | null>(null)
   const [name, setName] = useState('')
@@ -185,8 +186,11 @@ function AddSheet({ onClose }: { onClose: () => void }): React.JSX.Element {
 
   async function start(): Promise<void> {
     if (!info) return
+    const u = url.trim()
     try {
-      await Engine.start({ url: info.finalUrl, fileName: name.trim() || info.fileName, networks: picked.map((n) => n.id) })
+      // Keep the original URL. Every selected Android Network must follow its own redirect chain;
+      // a resolved URL obtained over Wi-Fi can be a temporary/IP-bound CDN URL that cellular rejects.
+      await Engine.start({ url: u, fileName: name.trim() || info.fileName, networks: picked.map((n) => n.id) })
       onClose()
     } catch (e) {
       setErr(msg(e))
@@ -281,7 +285,7 @@ function DetailSheet({ id, onClose }: { id: string; onClose: () => void }): Reac
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">{netName(s, n.id)}</div>
               <div className="font-mono text-xs text-muted-foreground">
-                {n.state === 'on' ? `${running ? formatSpeed(n.speed) + ' · ' : ''}${formatBytes(n.bytes)}` : n.state === 'offline' ? 'Not connected' : n.state === 'failed' ? 'Server refused this network' : 'Off'}
+                {n.state === 'on' ? `${running ? formatSpeed(n.speed) + ' · ' : ''}${formatBytes(n.bytes)}` : n.state === 'offline' ? 'Not connected' : n.state === 'failed' ? (n.error || 'Network request failed') : 'Off'}
               </div>
             </div>
             <span className="w-10 text-right font-mono text-xs" style={{ color: tone(n.id).text }}>{share[i]}%</span>

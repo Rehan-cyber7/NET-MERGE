@@ -2,19 +2,21 @@ name: Build Plexo Android APK
 
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   CI: true
+  ANDROID_VERSION_CODE: '4'
 
 jobs:
   build-android:
     name: Build debug APK
-    # Pin the runner during GitHub's ubuntu-latest migration to Ubuntu 26.04.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -34,6 +36,27 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Validate release tag matches app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACKAGE_VERSION="$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('package.json', 'utf8')).version)")"
+          EXPECTED_TAG="v${PACKAGE_VERSION}"
+          if [[ "$GITHUB_REF_NAME" != "$EXPECTED_TAG" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $PACKAGE_VERSION (expected $EXPECTED_TAG)."
+            exit 1
+          fi
+          echo "Release tag matches Plexo version $PACKAGE_VERSION."
+
+      # Keep the same debug certificate between workflow runs so a new APK can
+      # update the previously installed test build instead of requiring uninstall.
+      - name: Restore persistent debug signing key
+        uses: actions/cache@v5
+        with:
+          path: ~/.android/debug.keystore
+          key: plexo-debug-keystore-v1
+
       - name: Verify local Plexo Android plugin is tracked
         shell: bash
         run: |
@@ -44,8 +67,6 @@ jobs:
           test -f plugins/plexo-engine/android/src/main/java/app/plexo/engine/PlexoEnginePlugin.java
           echo "Plexo native Android plugin files are present."
 
-      # Use the runner's sdkmanager script but install SDK packages to a
-      # writable directory. Invoke it with bash; do not chmod the preinstalled SDK.
       - name: Install Android SDK packages
         shell: bash
         run: |
@@ -69,8 +90,6 @@ jobs:
           echo "Using sdkmanager: $SDKMANAGER"
           echo "Installing Android SDK into: $SDK_ROOT"
 
-          # sdkmanager closes stdin after reading licenses; disable pipefail
-          # for this pipeline so yes receiving SIGPIPE does not fail the step.
           set +o pipefail
           yes | bash "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null
           set -o pipefail
@@ -84,11 +103,20 @@ jobs:
       - name: Install npm dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Run TypeScript utility tests
+        run: npm test
+
+      - name: Run native chunk scheduler tests
+        run: npm run test:native
+
       - name: Build web app
         run: npm run build
 
       - name: Generate Capacitor Android project
         run: npx cap add android
+
+      - name: Set Android app version
+        run: node scripts/set-android-version.mjs
 
       - name: Sync Capacitor and local Plexo plugin
         run: npx cap sync android
@@ -107,6 +135,40 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Create APK checksum
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('package.json', 'utf8')).version)")"
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_LABEL="Plexo-${VERSION}-debug.apk"
+          cp "$APK" "$APK_LABEL"
+          sha256sum "$APK_LABEL" > "Plexo-${VERSION}-SHA256SUMS.txt"
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('package.json', 'utf8')).version)")"
+          APK_LABEL="Plexo-${VERSION}-debug.apk"
+          CHECKSUM="Plexo-${VERSION}-SHA256SUMS.txt"
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" \
+              "$APK_LABEL" "$CHECKSUM" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "$APK_LABEL" "$CHECKSUM" \
+              --verify-tag \
+              --title "Plexo v${VERSION}" \
+              --notes-file RELEASE_NOTES.md \
+              --latest
+          fi
 
       - name: Upload Gradle diagnostics if build fails
         if: failure()

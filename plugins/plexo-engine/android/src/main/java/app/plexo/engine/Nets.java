@@ -5,6 +5,7 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.util.Log;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * what makes Wi-Fi + mobile data at the same time possible.
  */
 final class Nets {
+    private static final String TAG = "PlexoNets";
     static final String[] IDS = {"wifi", "cellular", "ethernet"};
     static final String[] NAMES = {"Wi-Fi", "Mobile data", "Ethernet"};
     private static final int[] TRANSPORT = {
@@ -57,14 +59,40 @@ final class Nets {
                 .addTransportType(TRANSPORT[i])
                 .build();
             ConnectivityManager.NetworkCallback cb = new ConnectivityManager.NetworkCallback() {
-                @Override public void onAvailable(Network n) { up.put(id, n); changed.run(); }
-                @Override public void onLost(Network n) { up.remove(id, n); changed.run(); }
+                @Override public void onAvailable(Network n) {
+                    Log.i(TAG, id + " network available: " + n);
+                    up.put(id, n);
+                    changed.run();
+                }
+
+                @Override public void onCapabilitiesChanged(Network n, NetworkCapabilities caps) {
+                    boolean matches = caps.hasTransport(TRANSPORT[indexOf(id)])
+                        && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                    Log.i(TAG, id + " capabilities: internet="
+                        + caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        + ", validated=" + caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                        + ", usable=" + matches);
+                    if (matches) up.put(id, n); else up.remove(id, n);
+                    changed.run();
+                }
+
+                @Override public void onLost(Network n) {
+                    Log.w(TAG, id + " network lost: " + n);
+                    up.remove(id, n);
+                    changed.run();
+                }
+
+                @Override public void onUnavailable() {
+                    Log.w(TAG, id + " network request unavailable");
+                    changed.run();
+                }
             };
             try {
                 cm.requestNetwork(req, cb);
                 callbacks[i] = cb;
             } catch (RuntimeException e) {
-                // no permission, or too many requests: this transport just stays offline
+                // Keep the app usable on the remaining transport, but leave a Logcat diagnosis.
+                Log.e(TAG, "Unable to request " + id + " network", e);
             }
         }
     }
@@ -77,6 +105,11 @@ final class Nets {
             callbacks[i] = null;
             up.remove(IDS[i]);
         }
+    }
+
+    private static int indexOf(String id) {
+        for (int i = 0; i < IDS.length; i++) if (IDS[i].equals(id)) return i;
+        return 0;
     }
 
     /**
@@ -99,9 +132,14 @@ final class Nets {
             try {
                 code = c.getResponseCode();
             } catch (IOException e) {
+                Log.w(TAG, "Connection failed via " + (netId == null ? "default" : netId)
+                    + " host=" + u.getHost() + " range=" + (range != null), e);
                 c.disconnect();
                 throw e;
             }
+            // Never log full URLs: download links may contain private tokens or signatures.
+            Log.i(TAG, "HTTP " + code + " via " + (netId == null ? "default" : netId)
+                + " host=" + u.getHost() + " range=" + (range != null));
             if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
                 String loc = c.getHeaderField("Location");
                 c.disconnect();

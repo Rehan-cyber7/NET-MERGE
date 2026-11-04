@@ -58,7 +58,8 @@ final class Job {
         JSONObject json(boolean online, boolean down) throws JSONException {
             String state = !enabled ? "off" : failed ? "failed" : online ? "on" : "offline";
             return new JSONObject().put("id", id).put("enabled", enabled).put("state", state)
-                .put("bytes", bytes.get()).put("speed", down ? speed : 0);
+                .put("bytes", bytes.get()).put("speed", down ? speed : 0)
+                .put("error", error == null ? JSONObject.NULL : error);
         }
     }
 
@@ -195,7 +196,7 @@ final class Job {
 
     void resume() {
         if (!status.equals("paused") && !status.equals("error")) return;
-        for (Stat s : nets) { s.failed = false; s.fails.set(0); }
+        for (Stat s : nets) { s.failed = false; s.error = null; s.fails.set(0); }
         error = null;
         status = "queued";
         eng.changed(this);
@@ -206,6 +207,7 @@ final class Job {
             if (!s.id.equals(netId)) continue;
             s.enabled = on;
             s.failed = false; // switching it off and on is how a refused network is tried again
+            s.error = null;
             s.fails.set(0);
         }
         eng.emit(this);
@@ -262,14 +264,79 @@ final class Job {
     }
 
     private void probe() throws IOException {
-        String via = null;
-        for (Stat s : nets) if (usable(s)) { via = s.id; break; }
-        Probe p = Probe.run(eng.nets, via, url);
-        finalUrl = p.finalUrl;
-        total = p.total;
-        ranges = p.ranges;
-        if (fileName == null) fileName = p.fileName;
-        map = ranges ? new ChunkMap(total) : null;
+        Probe firstPlain = null;
+        Probe firstRange = null;
+        IOException last = null;
+        List<Integer> rangeNetworks = new ArrayList<>();
+        int attempted = 0;
+
+        // Probe each selected transport independently from the ORIGINAL URL. Many download hosts
+        // redirect to short-lived or source-IP-bound CDN URLs. Reusing the Wi-Fi redirect URL for
+        // cellular makes the CDN reject the cellular request even though the original link works.
+        for (Stat s : nets) {
+            if (!s.enabled || !eng.nets.online(s.id)) continue;
+            attempted++;
+            try {
+                Probe p = Probe.run(eng.nets, s.id, url);
+                s.error = null;
+                s.failed = false;
+                s.fails.set(0);
+
+                if (p.ranges && p.total >= 0) {
+                    if (firstRange == null) firstRange = p;
+                    if (p.total == firstRange.total) {
+                        rangeNetworks.add(s.idx);
+                    } else {
+                        s.failed = true;
+                        s.fails.set(MAX_FAILS);
+                        s.error = "This network returned a different file size; it cannot safely share this download";
+                    }
+                } else if (firstPlain == null) {
+                    firstPlain = p;
+                }
+            } catch (IOException e) {
+                // A route can be reported as connected while its DNS/Internet path or download
+                // host denies it. Keep the error attached to that transport and try the others.
+                s.error = Probe.message(e);
+                s.failed = true;
+                s.fails.set(MAX_FAILS);
+                last = e;
+            }
+        }
+
+        if (firstRange != null) {
+            // Only transports that independently returned valid byte ranges for the same length
+            // may participate in a split download. A 200 response or a 403 route is not eligible.
+            for (Stat s : nets) {
+                if (s.enabled && !rangeNetworks.contains(s.idx) && !s.failed) {
+                    s.failed = true;
+                    s.fails.set(MAX_FAILS);
+                    s.error = "This network does not support byte-range downloads for this link";
+                }
+            }
+            finalUrl = firstRange.finalUrl; // retained for link metadata; workers use url below
+            total = firstRange.total;
+            ranges = true;
+            if (fileName == null) fileName = firstRange.fileName;
+            int[] activeNetworks = rangeNetworks.stream().mapToInt(Integer::intValue).toArray();
+            map = new ChunkMap(total, activeNetworks);
+            return;
+        }
+
+        if (firstPlain != null) {
+            // If the host does not support ranges at all, retain the normal single-stream path.
+            finalUrl = firstPlain.finalUrl;
+            total = firstPlain.total;
+            ranges = false;
+            if (fileName == null) fileName = firstPlain.fileName;
+            map = null;
+            return;
+        }
+
+        if (last != null) throw last;
+        throw new IOException(attempted == 0
+            ? "None of the selected networks is currently connected to the internet"
+            : "None of the selected networks can access this download link");
     }
 
     private boolean complete() { return ranges ? map.complete() : singleDone; }
@@ -322,7 +389,9 @@ final class Job {
     private void work(Run r, Stat s) {
         try {
             while (!r.stop && s.enabled) {
-                int c = map.claim();
+                boolean[] usableNetworks = new boolean[Nets.IDS.length];
+                for (Stat candidate : nets) usableNetworks[candidate.idx] = usable(candidate);
+                int c = map.claim(s.idx, usableNetworks);
                 if (c < 0) return;
                 try {
                     fetch(r, s, c);
@@ -342,7 +411,7 @@ final class Job {
     private void fetch(Run r, Stat s, int c) throws IOException, InterruptedException {
         long from = map.from(c), to = map.to(c);
         if (from > to) return; // all of it was written already
-        Nets.Resp resp = eng.nets.open(s.id, finalUrl, "bytes=" + from + "-" + to);
+        Nets.Resp resp = eng.nets.open(s.id, url, "bytes=" + from + "-" + to);
         r.conns.add(resp.conn);
         try {
             if (resp.code != 206) {
@@ -360,7 +429,7 @@ final class Job {
     private void single(Run r, Stat s) {
         try {
             plain.set(0); // no ranges: a retry starts the file again
-            Nets.Resp resp = eng.nets.open(s.id, finalUrl, null);
+            Nets.Resp resp = eng.nets.open(s.id, url, null);
             r.conns.add(resp.conn);
             try {
                 if (resp.code != 200) throw new IOException(Probe.describe(resp.code));

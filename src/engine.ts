@@ -16,6 +16,7 @@ export interface DlNet {
   state: 'on' | 'off' | 'offline' | 'failed'
   bytes: number
   speed: number
+  error?: string | null
 }
 
 export interface Dl {

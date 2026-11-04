@@ -95,6 +95,8 @@ final class Engine {
     }
 
     JSONArray networks() {
+        // Retry any transport request that previously failed and return the latest native snapshot.
+        nets.request();
         JSONArray a = new JSONArray();
         try {
             for (int i = 0; i < Nets.IDS.length; i++) {
@@ -107,9 +109,20 @@ final class Engine {
     }
 
     JSONObject probe(String url) throws IOException {
-        String via = null;
-        for (String id : Nets.IDS) if (nets.online(id)) { via = id; break; }
-        return Probe.run(nets, via, url).json();
+        IOException last = null;
+        boolean tried = false;
+        for (String id : Nets.IDS) {
+            if (!nets.online(id)) continue;
+            tried = true;
+            try {
+                return Probe.run(nets, id, url).json();
+            } catch (IOException e) {
+                // Try another connected transport; the default network may not be the only route.
+                last = e;
+            }
+        }
+        if (!tried) return Probe.run(nets, null, url).json();
+        throw last == null ? new IOException("No usable network") : last;
     }
 
     String start(String url, String name, List<String> use) {

@@ -68,13 +68,33 @@ export function setLimit(network: NetId, bytesPerSec: number): void {
   void Engine.setLimit({ network, bytesPerSec })
 }
 
-export async function init(): Promise<void> {
-  const [n, l] = await Promise.all([Engine.networks(), Engine.list()])
-  set({ nets: n.networks, dls: l.downloads.sort(byNewest), limits: l.limits, ready: true })
-  void Engine.addListener('update', upsert)
-  void Engine.addListener('removed', ({ id }) => {
-    samples.delete(id)
-    set({ dls: state.dls.filter((d) => d.id !== id) })
+let initPromise: Promise<void> | null = null
+
+export function init(): Promise<void> {
+  if (initPromise) return initPromise
+  initPromise = (async () => {
+    // Subscribe before taking the first snapshot. Native Android network callbacks can arrive
+    // while the initial networks() call is in flight; subscribing afterwards can miss Wi-Fi.
+    await Promise.all([
+      Engine.addListener('update', upsert),
+      Engine.addListener('removed', ({ id }) => {
+        samples.delete(id)
+        set({ dls: state.dls.filter((d) => d.id !== id) })
+      }),
+      Engine.addListener('networks', ({ networks }) => set({ nets: networks }))
+    ])
+
+    const [n, l] = await Promise.all([Engine.networks(), Engine.list()])
+    set({ nets: n.networks, dls: l.downloads.sort(byNewest), limits: l.limits, ready: true })
+  })().catch((error: unknown) => {
+    initPromise = null
+    throw error
   })
-  void Engine.addListener('networks', ({ networks }) => set({ nets: networks }))
+  return initPromise
+}
+
+/** Refresh the native network snapshot when the user opens the download sheet. */
+export async function refreshNetworks(): Promise<void> {
+  const n = await Engine.networks()
+  set({ nets: n.networks })
 }
