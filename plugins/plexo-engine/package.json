@@ -1,0 +1,13 @@
+{
+  "name": "plexo-engine",
+  "version": "0.1.0",
+  "description": "Chunked downloads over Wi-Fi and mobile data at once, for Plexo Mobile",
+  "license": "MIT",
+  "main": "index.js",
+  "files": ["android/src/main/", "android/build.gradle", "ios/Sources", "Package.swift", "PlexoEngine.podspec"],
+  "capacitor": {
+    "ios": { "src": "ios" },
+    "android": { "src": "android" }
+  },
+  "peerDependencies": { "@capacitor/core": ">=7.0.0" }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "plexo-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plexo for Android and iOS: combine Wi-Fi and mobile data to download files faster",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --experimental-strip-types scripts/format.test.ts",
+    "sync": "npm run build && cap sync",
+    "test:native": "mkdir -p /tmp/plexo-jc && java -m jdk.compiler/com.sun.tools.javac.Main -d /tmp/plexo-jc plugins/plexo-engine/android/src/main/java/app/plexo/engine/ChunkMap.java plugins/plexo-engine/android/src/main/java/app/plexo/engine/Limiter.java plugins/plexo-engine/android/src/test/java/app/plexo/engine/CoreCheck.java && java -ea -cp /tmp/plexo-jc app.plexo.engine.CoreCheck"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "lucide-react": "^0.468.0",
+    "plexo-engine": "file:./plugins/plexo-engine",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}
