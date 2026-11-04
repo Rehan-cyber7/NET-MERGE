@@ -14,34 +14,45 @@ env:
 jobs:
   build-android:
     name: Build debug APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Pin the runner during GitHub's ubuntu-latest migration to Ubuntu 26.04.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '22'
+          package-manager-cache: false
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
-      # Do not chmod or modify the runner's preinstalled SDK. Invoke sdkmanager
-      # through bash (so its executable bit is not needed) and install SDK
-      # packages into a writable directory owned by the GitHub runner.
+      - name: Verify local Plexo Android plugin is tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f plugins/plexo-engine/package.json
+          test -f plugins/plexo-engine/android/build.gradle
+          test -f plugins/plexo-engine/android/src/main/AndroidManifest.xml
+          test -f plugins/plexo-engine/android/src/main/java/app/plexo/engine/PlexoEnginePlugin.java
+          echo "Plexo native Android plugin files are present."
+
+      # Use the runner's sdkmanager script but install SDK packages to a
+      # writable directory. Invoke it with bash; do not chmod the preinstalled SDK.
       - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
 
           PREINSTALLED_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          SDKMANAGER="$(find "$PREINSTALLED_SDK/cmdline-tools" -name sdkmanager -print 2>/dev/null | sort -V | tail -n 1)"
+          SDKMANAGER="$(find "$PREINSTALLED_SDK/cmdline-tools" -type f -name sdkmanager -print 2>/dev/null | sort -V | tail -n 1)"
 
           if [[ -z "$SDKMANAGER" || ! -r "$SDKMANAGER" ]]; then
             echo "Readable sdkmanager not found under: $PREINSTALLED_SDK/cmdline-tools"
@@ -49,24 +60,23 @@ jobs:
             exit 1
           fi
 
-          echo "Using sdkmanager: $SDKMANAGER"
-          ls -l "$SDKMANAGER"
-
-          # Avoid permissions/ownership problems in /usr/local/lib/android/sdk.
           SDK_ROOT="$RUNNER_TEMP/android-sdk"
           mkdir -p "$SDK_ROOT"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
-          # Use bash to run the script without changing its file permissions.
-          # License acceptance can close the input pipe early, so tolerate that
-          # expected yes/SIGPIPE condition while still checking package install.
+          echo "Using sdkmanager: $SDKMANAGER"
+          echo "Installing Android SDK into: $SDK_ROOT"
+
+          # sdkmanager closes stdin after reading licenses; disable pipefail
+          # for this pipeline so yes receiving SIGPIPE does not fail the step.
           set +o pipefail
           yes | bash "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null
           set -o pipefail
 
           bash "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
+            "cmdline-tools;latest" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
@@ -83,14 +93,28 @@ jobs:
       - name: Sync Capacitor and local Plexo plugin
         run: npx cap sync android
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: plexo-android-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload Gradle diagnostics if build fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: plexo-gradle-diagnostics
+          path: |
+            android/**/build/reports/**
+            android/.gradle/daemon/**/daemon-*.out.log
+          if-no-files-found: ignore
+          retention-days: 7
