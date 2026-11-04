@@ -9,12 +9,9 @@
 
 ## App preview
 
+
 <p align="center">
-  <img
-    src="docs/screenshots/plusnet-home-screen.jpg"
-    alt="PlusNet Android App Home Screen"
-    width="320"
-  />
+  <img src="docs/screenshots/plusnet-home-screen.jpg" alt="PlusNet Android home screen showing Wi-Fi and mobile-data status, total download speed, Downloads and Complete tabs, and the add-download button" width="340" />
 </p>
 
 <p align="center">
