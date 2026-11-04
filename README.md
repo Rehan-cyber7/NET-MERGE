@@ -10,10 +10,10 @@
 ## App preview
 
 <p align="center">
-  <img src="docs/screenshots/plusnet-download-details.jpg" alt="PlusNet download details screen with Wi-Fi and mobile-data controls, progress, file blocks and speed chart" width="380" />
+  <img src="docs/screenshots/plusnet-home-screen.jpg" alt="PlusNet Android home screen showing Wi-Fi and mobile-data status, total download speed, Downloads and Complete tabs, and the add-download button" width="340" />
 </p>
 
-The screenshot illustrates the download-details interface. The network result shown is from one test URL; whether a server accepts Wi-Fi and cellular requests depends on that server, the carrier and the device.
+The screenshot above shows the PlusNet Android home screen. Network availability and download speeds depend on the device, connection and download host.
 
 ## Features
 
