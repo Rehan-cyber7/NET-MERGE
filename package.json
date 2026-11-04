@@ -1,8 +1,8 @@
 {
-  "name": "plexo-mobile",
-  "version": "0.3.7",
+  "name": "plusnet-mobile",
+  "version": "0.4.0",
   "private": true,
-  "description": "Plexo for Android and iOS: combine Wi-Fi and mobile data to download files faster",
+  "description": "PlusNet for Android and iOS: download files over Wi-Fi and mobile data together",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,14 +10,14 @@
     "build": "tsc --noEmit && vite build",
     "test": "node --experimental-strip-types scripts/format.test.ts",
     "sync": "npm run build && cap sync",
-    "test:native": "mkdir -p /tmp/plexo-jc && java -m jdk.compiler/com.sun.tools.javac.Main -d /tmp/plexo-jc plugins/plexo-engine/android/src/main/java/app/plexo/engine/ChunkMap.java plugins/plexo-engine/android/src/main/java/app/plexo/engine/Limiter.java plugins/plexo-engine/android/src/test/java/app/plexo/engine/CoreCheck.java && java -ea -cp /tmp/plexo-jc app.plexo.engine.CoreCheck"
+    "test:native": "mkdir -p /tmp/plusnet-jc && java -m jdk.compiler/com.sun.tools.javac.Main -d /tmp/plusnet-jc plugins/plusnet-engine/android/src/main/java/app/plusnet/engine/ChunkMap.java plugins/plusnet-engine/android/src/main/java/app/plusnet/engine/Limiter.java plugins/plusnet-engine/android/src/test/java/app/plusnet/engine/CoreCheck.java && java -ea -cp /tmp/plusnet-jc app.plusnet.engine.CoreCheck"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
     "lucide-react": "^0.468.0",
-    "plexo-engine": "file:./plugins/plexo-engine",
+    "plusnet-engine": "file:./plugins/plusnet-engine",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

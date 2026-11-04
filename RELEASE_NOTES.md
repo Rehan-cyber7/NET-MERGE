@@ -1,23 +1,29 @@
-# Plexo v0.3.7
+# PlusNet v0.4.0
 
-This release continues the repository's `0.3.x` release line and packages the working Android multi-network download implementation.
+This release rebrands the Android/iOS app and its native Capacitor engine as **PlusNet**. It carries forward the multi-network download improvements from the previous `0.3.x` release line.
 
-## Included
+## What's changed
 
-- Independent download URL probing and redirect handling on each selected Android network.
-- Keep the original input URL for native network-specific requests instead of reusing a redirect URL discovered over another network.
-- HTTP range validation before a network is used for split downloading.
-- Fair byte-range scheduling and fallback for unclaimed ranges when a selected network becomes unavailable.
-- Network diagnostics for investigating Wi-Fi and cellular route failures.
-- GitHub Actions build and automatic GitHub Release packaging.
+- Renamed the app display name, web title, native plugin, plugin package and build workflow to PlusNet.
+- Changed the Android application ID to `app.plusnet.mobile`.
+- Updated Android and iOS native plugin identifiers and namespaces to PlusNet.
+- Replaced the app icon with a new PlusNet mark.
+- Updated the README, release notes, workflow artifact names and diagnostics.
+- Preserved independent Wi-Fi/cellular probing, redirect handling, HTTP range validation, fair chunk scheduling and network fallback.
 
-## Download
+## Android build
 
-- `Plexo-0.3.7-debug.apk` — Android debug APK for testing.
-- `Plexo-0.3.7-SHA256SUMS.txt` — SHA-256 checksum for the APK.
+- App version: `0.4.0`
+- Android versionCode: `5`
+- Application ID: `app.plusnet.mobile`
+- Artifact: `PlusNet-0.4.0-debug.apk`
 
-## Important notes
+## Important upgrade note
 
-- The download host must support HTTP byte ranges and return a compatible `206 Partial Content` response.
-- The server/CDN must accept requests from both selected networks. A server may reject a route based on IP, session or signed-URL policy.
-- This is a debug/test APK, not a production-signed Play Store build.
+Because the Android application ID changed from `app.plexo.mobile` to `app.plusnet.mobile`, Android installs PlusNet as a separate app. It does not replace an existing Plexo installation or automatically migrate its local history and preferences.
+
+## Network compatibility
+
+Multi-network splitting still requires a server that supports HTTP byte ranges and accepts requests over each selected network. Server, CDN and carrier restrictions cannot be bypassed by the app.
+
+This is a debug/testing APK, not a production-signed Google Play release.

@@ -108,9 +108,9 @@
   --radius: 8px;
 }
 
-/* Maps shadcn/Base UI's expected semantic tokens onto Plexo's existing palette above, instead of
+/* Maps shadcn/Base UI's expected semantic tokens onto PlusNet's existing palette above, instead of
    introducing a second, parallel color system. Tailwind only generates `bg-primary`-style
-   utilities for names declared here, in `@theme` — so this can freely reuse Plexo's own custom
+   utilities for names declared here, in `@theme` — so this can freely reuse PlusNet's own custom
    property *values* (e.g. --color-accent) without colliding with their names, since only the
    left-hand names below become Tailwind tokens. */
 @theme inline {
@@ -146,7 +146,7 @@
   :root {
     --hero-bg: linear-gradient(180deg, #202325 0%, #1b1e20 100%);
     --hero-border: #2b2f33;
-    /* Graphite instrument-panel background — exact hex values from the "Plexo v2" design doc. */
+    /* Graphite instrument-panel background — exact hex values from the "PlusNet v2" design doc. */
     --bg: #1b1e20;
     --bg-secondary: #202325;
     --bg-tertiary: #202325;
@@ -229,7 +229,7 @@
    padding resets, and the default font family, are already handled by Tailwind Preflight, so
    they are not repeated here. Body, html and root element sizing now live as utility classes
    in index.html instead. */
-/* Mobile base (replaces Plexo's desktop resets: arrow cursor, wide scrollbars). */
+/* Mobile base (replaces PlusNet's desktop resets: arrow cursor, wide scrollbars). */
 @layer base {
   html, body, #root { height: 100%; }
   body {
@@ -244,7 +244,7 @@
   input { user-select: text; }
 }
 
-@keyframes plexo-glow {
+@keyframes plusnet-glow {
   0%,
   100% {
     opacity: 0.45;
@@ -254,7 +254,7 @@
   }
 }
 
-@keyframes plexo-popover-in {
+@keyframes plusnet-popover-in {
   from {
     opacity: 0;
     transform: translateY(-4px) scale(0.97);
@@ -275,7 +275,7 @@
   }
 }
 
-@keyframes plexo-sheet {
+@keyframes plusnet-sheet {
   from {
     transform: translateY(24px);
     opacity: 0;

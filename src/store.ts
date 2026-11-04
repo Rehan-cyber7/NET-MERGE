@@ -15,7 +15,7 @@ interface State {
   ready: boolean
 }
 
-const NAMES_KEY = 'plexo.names'
+const NAMES_KEY = 'plusnet.names'
 const HISTORY_SECONDS = 60
 
 function loadNames(): State['names'] {

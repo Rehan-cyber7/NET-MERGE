@@ -26,12 +26,12 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      {/* The panel every Plexo screen opens on: per-network speeds and their sum. */}
+      {/* The panel every PlusNet screen opens on: per-network speeds and their sum. */}
       <header className="border-b border-b-[var(--hero-border)] bg-[image:var(--hero-bg)] px-5 pb-4 pt-[calc(env(safe-area-inset-top)+14px)]">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src="/icon.png" alt="" className="h-7 w-7 rounded-lg" />
-            <h1 className="text-lg font-extrabold tracking-tight">Plexo</h1>
+            <h1 className="text-lg font-extrabold tracking-tight">PlusNet</h1>
           </div>
           <button aria-label="Networks and limits" onClick={() => setSheet('nets')} className="p-2 text-muted-foreground">
             <Settings2 size={20} />

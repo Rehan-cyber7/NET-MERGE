@@ -3,7 +3,7 @@ import { Cable, Signal, Wifi, X } from 'lucide-react'
 import type { NetId } from './engine'
 import type { Sample } from './store'
 
-// Plexo's own palette: Wi-Fi teal, the amber of its USB network for mobile data, steel for Ethernet.
+// PlusNet's own palette: Wi-Fi teal, the amber of its USB network for mobile data, steel for Ethernet.
 const TONE: Record<NetId, string> = { wifi: 'wifi', cellular: 'usb', ethernet: 'ethernet' }
 export const tone = (id: NetId): { solid: string; bg: string; text: string } => ({
   solid: `var(--color-${TONE[id]})`,
@@ -25,7 +25,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
         role="dialog"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        style={{ animation: 'plexo-sheet 0.2s ease-out' }}
+        style={{ animation: 'plusnet-sheet 0.2s ease-out' }}
         className="max-h-[90%] w-full overflow-y-auto rounded-t-2xl border-t border-border bg-background px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+20px)]"
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border-strong)]" />
@@ -75,14 +75,14 @@ export function ShareBar({ parts }: { parts: { id: NetId; value: number }[] }): 
   )
 }
 
-/** The file as small blocks, each colored by the network that delivered it (Plexo's block grid). */
+/** The file as small blocks, each colored by the network that delivered it (PlusNet's block grid). */
 export function BlockGrid({ cells }: { cells: string }): React.JSX.Element | null {
   if (!cells) return null
   return (
     <div className="grid gap-[3px]" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(11px, 1fr))' }} aria-hidden>
       {[...cells].map((c, i) => {
         const net = c >= '0' && c <= '2' ? IDS[Number(c)] : undefined
-        const style = net ? { background: tone(net).solid } : c === '*' ? { background: 'var(--color-accent)', animation: 'plexo-glow 1.2s infinite' } : { background: 'var(--track-bg)' }
+        const style = net ? { background: tone(net).solid } : c === '*' ? { background: 'var(--color-accent)', animation: 'plusnet-glow 1.2s infinite' } : { background: 'var(--track-bg)' }
         return <div key={i} className="aspect-square rounded-[3px]" style={style} />
       })}
     </div>

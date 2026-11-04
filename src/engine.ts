@@ -62,6 +62,6 @@ export interface EngineApi {
 }
 
 // In a browser (npm run dev) the engine is a simulation, so the UI can be worked on without a phone.
-export const Engine = registerPlugin<EngineApi>('PlexoEngine', {
+export const Engine = registerPlugin<EngineApi>('PlusNetEngine', {
   web: () => import('./mock').then((m) => new m.MockEngine())
 })
