@@ -9,14 +9,10 @@
 
 ## App preview
 
-
 <p align="center">
   <img src="docs/screenshots/plusnet-home-screen.jpg" alt="PlusNet Android home screen showing Wi-Fi and mobile-data status, total download speed, Downloads and Complete tabs, and the add-download button" width="340" />
 </p>
 
-<p align="center">
-  <b>PlusNet – Multi-Network Android Download Manager</b>
-</p>
 The screenshot above shows the PlusNet Android home screen. Network availability and download speeds depend on the device, connection and download host.
 
 ## Features
