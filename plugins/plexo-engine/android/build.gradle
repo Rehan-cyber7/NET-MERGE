@@ -44,4 +44,8 @@ repositories {
 
 dependencies {
     implementation project(':capacitor-android')
+
+    // Capacitor's public Plugin.getActivity() method returns AppCompatActivity.
+    // Add AppCompat directly so this plugin can compile against that public type.
+    implementation 'androidx.appcompat:appcompat:1.7.0'
 }

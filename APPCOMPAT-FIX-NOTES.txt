@@ -1,0 +1,14 @@
+Plexo Android plugin AppCompat classpath fix
+
+Changed:
+plugins/plexo-engine/android/build.gradle
+
+Added a direct androidx.appcompat:appcompat:1.7.0 dependency to the local
+Capacitor plugin module. Capacitor's Plugin.getActivity() public method returns
+androidx.appcompat.app.AppCompatActivity. Because Capacitor's own appcompat
+artifact is an implementation dependency, it is not guaranteed to be present
+on a dependent plugin module's compile classpath. The plugin therefore declares
+AppCompat directly.
+
+The Android module already declares google() and mavenCentral() repositories.
+The workflow and previous native-plugin tracking / SDK setup fixes are retained.
